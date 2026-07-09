@@ -238,25 +238,64 @@ impl Render for DragDrop {
     }
 }
 
+#[derive(PartialEq)]
+enum ViewMode {
+    List,
+    Grid,
+}
+
+impl ViewMode {
+    fn toggle(&mut self) {
+        *self = match self {
+            ViewMode::List => ViewMode::Grid,
+            ViewMode::Grid => ViewMode::List,
+        }
+    }
+}
+
+impl Into<SharedString> for ViewMode {
+    fn into(self) -> SharedString {
+        match self {
+            ViewMode::List => "List",
+            ViewMode::Grid => "Grid",
+        }.into()
+    }
+}
+
+struct AppState {
+    view_mode: ViewMode,
+}
+
+impl gpui::Global for AppState {}
+
+impl AppState {
+    fn new() -> Self {
+        Self {
+            view_mode: ViewMode::List,
+        }
+    }
+}
+
 fn main() {
     application().run(|cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(800.), px(800.0)), cx);
 
-        cx.open_window(
-            WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
-                ..Default::default()
-            },
-            |_, cx| {
-                let drag_drop = cx.new(|_| DragDrop::new());
-                cx.new(|_| RootView {
-                    text: "World".into(),
-                    drag_drop,
-                })
-            },
-        )
-        .unwrap();
+        let window_options = WindowOptions {
+            window_bounds: Some(WindowBounds::Windowed(bounds)),
+            ..Default::default()
+        };
+
+        cx.open_window(window_options, build_root_view).unwrap();
 
         cx.activate(true);
     });
+}
+
+fn build_root_view(_window: &mut Window, app: &mut App) -> Entity<RootView> {
+    app.set_global(AppState::new());
+    let drag_drop = app.new(|_| DragDrop::new());
+    app.new(|_| RootView {
+        text: "World".into(),
+        drag_drop,
+    })
 }
