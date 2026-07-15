@@ -1,12 +1,16 @@
 [package]
-name = "nimbus"
+name = "gpui-studies"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 gpui = { git = "https://github.com/zed-industries/zed" }
-gpui_platform = { git = "https://github.com/zed-industries/zed" }
-# smallvec is included here for convenience, it is used by gpui when creating
-# components that can have children. uncomment this line or
-# use `cargo add smallvec` to add it to your project
-#smallvec = "1.13.2"
+gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit"] }
+gpui-component = { git = "https://github.com/longbridge/gpui-component" }
+gpui-component-assets = { git = "https://github.com/longbridge/gpui-component" }
+sysinfo = "0.39.6"
+smol = "2.0.2"
+battery = "0.7.8"
+windows = { version = "0.62.2", features = ["Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D11", "Win32_Graphics_Dxgi"] }
+
+
