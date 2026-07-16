@@ -1,6 +1,6 @@
 use gpui::{
-    div, prelude::*, px, rgb, size, uniform_list, App, Bounds, Context, Entity, Half, Hsla, Pixels,
-    Point, SharedString, Window, WindowBounds, WindowOptions,
+    App, Bounds, Context, Entity, Half, Hsla, Pixels, Point, SharedString, Window, WindowBounds,
+    WindowOptions, div, prelude::*, px, rgb, size, uniform_list,
 };
 use gpui_platform::application;
 
@@ -258,7 +258,8 @@ impl Into<SharedString> for ViewMode {
         match self {
             ViewMode::List => "List",
             ViewMode::Grid => "Grid",
-        }.into()
+        }
+        .into()
     }
 }
 

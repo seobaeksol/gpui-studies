@@ -2303,17 +2303,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "gpui-studies"
+name = "gpui-playground"
 version = "0.1.0"
 dependencies = [
- "battery",
  "gpui",
- "gpui-component",
- "gpui-component-assets",
  "gpui_platform",
- "smol",
- "sysinfo 0.39.6",
- "windows 0.62.2",
 ]
 
 [[package]]
@@ -6260,6 +6254,20 @@ checksum = "8e1d1b10ced5ca923a1fcb8d03e96b8d3268065d724548c0211415ff6ac6bac4"
 dependencies = [
  "core-foundation-sys 0.8.7",
  "libc",
+]
+
+[[package]]
+name = "system-monitor"
+version = "0.1.0"
+dependencies = [
+ "battery",
+ "gpui",
+ "gpui-component",
+ "gpui-component-assets",
+ "gpui_platform",
+ "smol",
+ "sysinfo 0.39.6",
+ "windows 0.62.2",
 ]
 
 [[package]]

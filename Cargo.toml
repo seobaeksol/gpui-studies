@@ -1,16 +1,15 @@
-[package]
-name = "gpui-studies"
+[workspace]
+members = ["examples/*"]
+default-members = ["examples/playground"]
+resolver = "3"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
+[workspace.dependencies]
 gpui = { git = "https://github.com/zed-industries/zed" }
 gpui_platform = { git = "https://github.com/zed-industries/zed", features = ["font-kit"] }
 gpui-component = { git = "https://github.com/longbridge/gpui-component" }
 gpui-component-assets = { git = "https://github.com/longbridge/gpui-component" }
-sysinfo = "0.39.6"
 smol = "2.0.2"
-battery = "0.7.8"
-windows = { version = "0.62.2", features = ["Win32_Graphics_Direct3D", "Win32_Graphics_Direct3D11", "Win32_Graphics_Dxgi"] }
-
-

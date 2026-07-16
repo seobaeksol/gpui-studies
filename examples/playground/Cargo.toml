@@ -1,0 +1,8 @@
+[package]
+name = "gpui-playground"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gpui.workspace = true
+gpui_platform.workspace = true
