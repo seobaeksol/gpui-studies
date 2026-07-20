@@ -412,6 +412,56 @@ impl SystemMonitor {
                 cx.theme().blue,
                 cx,
             ))
+            .child(
+                v_flex()
+                    .gap_1()
+                    .px_3()
+                    .border_1()
+                    .border_color(cx.theme().border)
+                    .child(
+                        h_flex().justify_between().py_1().child(
+                            div()
+                                .text_sm()
+                                .text_color(cx.theme().foreground)
+                                .child("Disks"),
+                        ),
+                    )
+                    .children(self.disks.iter().map(|disk| {
+                        let raw_name = disk.name().to_string_lossy();
+                        let name = if raw_name.is_empty() {
+                            "No named"
+                        } else {
+                            raw_name.as_ref()
+                        };
+                        let total = disk.total_space();
+                        let used = total - disk.available_space();
+
+                        let usage_percent = used as f32 / total as f32 * 100.0;
+
+                        h_flex()
+                            .justify_between()
+                            .child(h_flex().child(format!(
+                                "{}({})",
+                                disk.name().to_string_lossy(),
+                                name,
+                            )))
+                            .child(
+                                h_flex()
+                                    .gap_1()
+                                    .child(
+                                        Progress::new("sys-info-disk-usage")
+                                            .w_12()
+                                            .h_2()
+                                            .value(usage_percent),
+                                    )
+                                    .child(format!(
+                                        "{} / {}",
+                                        format_bytes(used),
+                                        format_bytes(total)
+                                    )),
+                            )
+                    })),
+            )
     }
 
     fn render_processes_tab(&self, _cx: &Context<Self>) -> impl IntoElement {
