@@ -1,21 +1,25 @@
 use std::{collections::VecDeque, time::Duration};
 
 use battery::units::ratio::percent;
+use gpui::KeyBinding;
 use gpui::{
-    App, Bounds, Context, Entity, Hsla, Window, WindowBounds, WindowOptions, div,
+    App, Context, Entity, Hsla, Window, WindowBounds, WindowOptions, actions, div,
     linear_color_stop, linear_gradient, prelude::*, px, size,
 };
 use gpui_component::chart::AreaChart;
+use gpui_component::progress::Progress;
+use gpui_component::tab::{Tab, TabBar};
 use gpui_component::table::DataTable;
-use gpui_component::{ActiveTheme, Sizable, ThemeMode};
+use gpui_component::{ActiveTheme, Icon, Root, Sizable, Theme, ThemeMode, TitleBar};
 use gpui_component::{
     IconName, h_flex,
     table::{Column, ColumnSort, TableDelegate, TableState},
     v_flex,
 };
-use gpui_platform::application;
 use smol::Timer;
 use sysinfo::{Disks, Pid, System};
+
+actions!(system_monitor, [Quit]);
 
 const INTERVAL: Duration = Duration::from_millis(500);
 const MAX_DATA_POINTS: usize = 120;
@@ -54,6 +58,7 @@ struct ProcessInfo {
 
 #[derive(Clone)]
 struct DiskInfo {
+    #[allow(dead_code)]
     name: String,
     total: u64,
     used: u64,
@@ -61,6 +66,7 @@ struct DiskInfo {
 
 #[derive(Clone)]
 struct BatteryInfo {
+    #[allow(dead_code)]
     model: String,
     icon: IconName,
     percentage: f32,
@@ -431,38 +437,152 @@ impl SystemMonitor {
             .border_color(cx.theme().border)
             .bg(cx.theme().tab_bar)
             .text_color(cx.theme().muted_foreground)
-            .child(h_flex().gap_4().when_some(primary_dark, |this, disk| {
-                let used_percent = if disk.total > 0 {
-                    (disk.used as f64 / disk.total as f64 * 100.0) as f32
-                } else {
-                    0.0
-                };
-                this.child(h_flex())
-            }))
+            .child(
+                h_flex()
+                    .gap_4()
+                    // Disk info
+                    .when_some(primary_dark, |this, disk| {
+                        let used_percent = if disk.total > 0 {
+                            (disk.used as f64 / disk.total as f64 * 100.0) as f32
+                        } else {
+                            0.0
+                        };
+                        this.child(
+                            h_flex()
+                                .gap_2()
+                                .w(px(135.))
+                                .items_center()
+                                .child(Icon::new(IconName::HardDrive))
+                                .child(
+                                    Progress::new("status-disk")
+                                        .w_12()
+                                        .h_2()
+                                        .value(used_percent),
+                                )
+                                .child(format!("{:.0}%", used_percent)),
+                        )
+                    })
+                    // Memory info
+                    .child({
+                        let mem_percent = self.data.back().map(|p| p.memory as f32).unwrap_or(0.0);
+                        h_flex()
+                            .gap_2()
+                            .w(px(135.))
+                            .items_center()
+                            .child(Icon::new(IconName::MemoryStick))
+                            .child(Progress::new("status-mem").w_12().h_2().value(mem_percent))
+                            .child(format!("{:.0}%", mem_percent))
+                    })
+                    // Cpu info
+                    .child({
+                        let cpu_percent = self.data.back().map(|p| p.cpu as f32).unwrap_or(0.0);
+                        h_flex()
+                            .gap_2()
+                            .w(px(135.))
+                            .items_center()
+                            .child(Icon::new(IconName::Cpu))
+                            .child(Progress::new("status-cpu").w_12().h_2().value(cpu_percent))
+                            .child(format!("{:.0}%", cpu_percent))
+                    }),
+            )
+            .child(
+                // Batter info
+                div().when_some(primary_battery, |this, battery| {
+                    this.child(
+                        h_flex()
+                            .gap_2()
+                            .items_center()
+                            .child(Icon::new(battery.icon.clone()))
+                            .child(format!("{:.0}%", battery.percentage)),
+                    )
+                }),
+            )
     }
 }
 
 impl Render for SystemMonitor {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
-        div()
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let active_tab_index = self.active_tab as usize;
+
+        v_flex()
             .size_full()
-            .flex()
-            .justify_center()
-            .items_center()
-            .child("System Monitor")
+            .child(
+                TitleBar::new()
+                    .child(
+                        TabBar::new("monitor-tabs")
+                            .mt(px(1.))
+                            .segmented()
+                            .px_0()
+                            .py(px(2.))
+                            .bg(cx.theme().title_bar)
+                            .selected_index(active_tab_index)
+                            .on_click(cx.listener(|this, ix: &usize, window, cx| {
+                                this.set_active_tab(*ix, window, cx);
+                            }))
+                            .child(Tab::new().label("System"))
+                            .child(Tab::new().label("Processes")),
+                    )
+                    .child(
+                        div()
+                            .mr_4()
+                            .text_xs()
+                            .text_color(cx.theme().muted_foreground)
+                            .child(format!(
+                                "{:.1} GB",
+                                self.sys.total_memory() as f64 / 1024.0 / 1024.0 / 1024.0
+                            )),
+                    ),
+            )
+            .bg(cx.theme().background)
+            .child(
+                div()
+                    .id("tab-content")
+                    .flex_1()
+                    .overflow_y_scroll()
+                    .map(|this| match self.active_tab {
+                        MonitorTab::System => this.child(self.render_system_tab(cx)),
+                        MonitorTab::Processes => this.child(self.render_processes_tab(cx)),
+                    }),
+            )
+            .child(self.render_status_bar(cx))
     }
 }
 
 fn main() {
-    application().run(|cx: &mut App| {
-        let bounds = Bounds::centered(None, size(px(960.), px(640.)), cx);
-        let options = WindowOptions {
-            window_bounds: Some(WindowBounds::Windowed(bounds)),
+    let app = gpui_platform::application().with_assets(gpui_component_assets::Assets);
+
+    app.run(move |cx| {
+        gpui_component::init(cx);
+
+        cx.bind_keys([
+            #[cfg(target_os = "macos")]
+            KeyBinding::new("cmd-q", Quit, None),
+            #[cfg(not(target_os = "macos"))]
+            KeyBinding::new("alt-f4", Quit, None),
+        ]);
+
+        cx.on_action(|_: &Quit, cx: &mut App| {
+            cx.quit();
+        });
+
+        let window_options = WindowOptions {
+            titlebar: Some(TitleBar::title_bar_options()),
+            window_bounds: Some(WindowBounds::centered(size(px(680.), px(600.)), cx)),
             ..Default::default()
         };
 
-        // cx.open_window(options, |_window, cx| cx.new(|_| SystemMonitor))
-        //     .expect("failed to open system monitor window");
-        cx.activate(true);
-    });
+        cx.spawn(async move |cx| {
+            cx.open_window(window_options, |window, cx| {
+                window.activate_window();
+                window.set_window_title("System Monitor");
+
+                Theme::change(ThemeMode::Dark, Some(window), cx);
+
+                let view = cx.new(|cx| SystemMonitor::new(window, cx));
+                cx.new(|cx| Root::new(view, window, cx))
+            })
+            .expect("Failed to open window");
+        })
+        .detach();
+    })
 }
