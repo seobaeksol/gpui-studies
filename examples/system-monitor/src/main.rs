@@ -185,6 +185,7 @@ impl TableDelegate for ProcessTableDelegate {
                 } else {
                     cx.theme().blue
                 })
+                .child(format!("{:.1}%", process.cpu_usage))
                 .into_any_element(),
             3 => div()
                 .text_xs()
